@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>4 Friends — Private Group Chat</title>
+<style>
+  :root{
+    --bg:#090b10;
+    --panel:rgba(13,16,24,.88);
+    --panel-2:rgba(255,255,255,.08);
+    --text:#f5f7fb;
+    --muted:#aab3c3;
+    --border:rgba(255,255,255,.10);
+    --accent:#5ea3ff;
+    --accent-2:#8abaff;
+    --bubble:#1b2230;
+    --bubble-own:#245da8;
+    --shadow:0 24px 70px rgba(0,0,0,.45);
+  }
+
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{
+    font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    overflow:hidden;
+  }
+
+  button,input{font:inherit}
+  button{border:0;cursor:pointer}
+
+  /* ---------- Login ---------- */
+  #loginScreen{
+    position:fixed;
+    inset:0;
+    display:grid;
+    place-items:center;
+    padding:22px;
+    background:
+      radial-gradient(circle at 15% 10%, rgba(65,130,255,.20), transparent 30%),
+      radial-gradient(circle at 85% 85%, rgba(255,128,38,.16), transparent 28%),
+      linear-gradient(135deg,#07090e,#0f1420 55%,#080a0e);
+  }
+  .login-shell{
+    width:min(960px,100%);
+    display:grid;
+    grid-template-columns:1.05fr .95fr;
+    gap:18px;
+  }
+  .intro-card,.profiles-card{
+    background:rgba(8,12,20,.82);
+    border:1px solid rgba(255,255,255,.10);
+    backdrop-filter:blur(20px);
+    border-radius:26px;
+    box-shadow:var(--shadow);
+  }
+  .intro-card{padding:34px}
+  .brand-row{display:flex;align-items:center;gap:14px;margin-bottom:30px}
+  .brand-logo{
+    width:56px;height:56px;border-radius:18px;
+    display:grid;place-items:center;
+    color:#fff;font-weight:900;font-size:22px;
+    background:linear-gradient(135deg,#ff7a18,#3f8cff);
+    box-shadow:0 12px 35px rgba(63,140,255,.23);
+  }
+  .brand-title{font-size:24px;font-weight:900;letter-spacing:-.4px}
+  .brand-sub{font-size:13px;color:var(--muted);margin-top:3px}
+  .intro-card h1{font-size:42px;line-height:1.03;margin:0 0 14px;letter-spacing:-1.5px}
+  .intro-card p{color:var(--muted);line-height:1.65;margin:0}
+  .tiny-note{
+    margin-top:24px;
+    padding:13px 15px;
+    border:1px solid var(--border);
+    border-radius:14px;
+    background:rgba(255,255,255,.04);
+    font-size:12px;
+    color:#cbd3df;
+  }
+  .profiles-card{padding:22px}
+  .profiles-card h2{margin:4px 2px 5px;font-size:20px}
+  .profiles-card .hint{margin:0 2px 18px;color:var(--muted);font-size:13px}
+  .profile-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .profile-btn{
+    min-height:122px;
+    padding:18px;
+    text-align:left;
+    border-radius:20px;
+    color:#fff;
+    border:1px solid var(--border);
+    background:linear-gradient(145deg,rgba(255,255,255,.07),rgba(255,255,255,.025));
+    transition:.2s ease;
+  }
+  .profile-btn:hover{transform:translateY(-2px);border-color:rgba(255,255,255,.22);background:rgba(255,255,255,.09)}
+  .avatar{
+    width:46px;height:46px;border-radius:15px;
+    display:grid;place-items:center;
+    font-weight:900;
+    background:linear-gradient(135deg,#2e7fff,#8ac1ff);
+    margin-bottom:13px;
+  }
+  .profile-btn:nth-child(2) .avatar{background:linear-gradient(135deg,#00b894,#79f2c0)}
+  .profile-btn:nth-child(3) .avatar{background:linear-gradient(135deg,#ff7a18,#ffd56a)}
+  .profile-btn:nth-child(4) .avatar{background:linear-gradient(135deg,#b45cff,#efb0ff)}
+  .profile-name{font-weight:800}
+  .profile-role{font-size:12px;color:var(--muted);margin-top:4px}
+
+  /* ---------- Password modal ---------- */
+  #passwordModal{
+    position:fixed;inset:0;display:none;place-items:center;padding:20px;
+    background:rgba(0,0,0,.68);
+    backdrop-filter:blur(10px);
+    z-index:20;
+  }
+  .password-box{
+    width:min(410px,100%);
+    background:#10151f;
+    border:1px solid var(--border);
+    border-radius:24px;
+    padding:24px;
+    box-shadow:var(--shadow);
+  }
+  .password-top{display:flex;justify-content:space-between;align-items:flex-start;gap:15px}
+  .password-top h3{margin:0;font-size:20px}
+  .close-btn{
+    width:38px;height:38px;border-radius:12px;
+    background:rgba(255,255,255,.06);color:#fff;font-size:20px;
+  }
+  .password-desc{color:var(--muted);font-size:13px;line-height:1.55;margin:9px 0 18px}
+  #passwordInput{
+    width:100%;padding:14px 15px;border-radius:14px;
+    border:1px solid var(--border);outline:none;
+    color:#fff;background:#0a0e15;
+  }
+  #passwordInput:focus{border-color:var(--accent)}
+  .login-submit{
+    width:100%;padding:13px 15px;margin-top:11px;border-radius:14px;
+    background:linear-gradient(135deg,#2f7ff8,#5ca7ff);
+    color:#fff;font-weight:800;
+  }
+  .error{min-height:19px;color:#ff8f8f;font-size:12px;margin-top:9px}
+
+  /* ---------- Themes ---------- */
+  body.theme-orange-blue{
+    --bg:#101018;--panel:rgba(18,17,28,.84);--text:#fff;--muted:#c2bdc5;
+    --border:rgba(255,255,255,.11);--accent:#ff7a18;--accent-2:#4d9bff;
+    --bubble:#292034;--bubble-own:#1e5e9e;
+    background:
+      radial-gradient(circle at 15% 15%, rgba(255,122,24,.34), transparent 27%),
+      radial-gradient(circle at 90% 18%, rgba(63,140,255,.28), transparent 25%),
+      radial-gradient(circle at 50% 90%, rgba(255,122,24,.16), transparent 35%),
+      linear-gradient(135deg,#17121d 0%,#101a2b 52%,#111017 100%);
+  }
+  body.theme-white-black{
+    --bg:#e9eaed;--panel:rgba(255,255,255,.82);--text:#111318;--muted:#626775;
+    --border:rgba(0,0,0,.10);--accent:#111318;--accent-2:#333843;
+    --bubble:#eceef1;--bubble-own:#181b22;
+    background:
+      radial-gradient(circle at 18% 15%, rgba(0,0,0,.08), transparent 26%),
+      radial-gradient(circle at 80% 82%, rgba(0,0,0,.06), transparent 28%),
+      linear-gradient(135deg,#f6f7f9,#dbdde1);
+  }
+  body.theme-green-white{
+    --bg:#eaf7ef;--panel:rgba(255,255,255,.83);--text:#102419;--muted:#617267;
+    --border:rgba(24,83,46,.12);--accent:#149447;--accent-2:#51c97d;
+    --bubble:#edf5ef;--bubble-own:#168b47;
+    background:
+      radial-gradient(circle at 20% 10%, rgba(29,160,81,.17), transparent 27%),
+      radial-gradient(circle at 90% 85%, rgba(85,194,124,.16), transparent 28%),
+      linear-gradient(135deg,#f5fff8,#dfeee4);
+  }
+
+  /* ---------- Chat ---------- */
+  #chatScreen{
+    position:fixed;inset:0;display:none;
+    background:inherit;
+  }
+  .chat-app{
+    width:100%;height:100%;
+    display:flex;
+    flex-direction:column;
+  }
+  .chat-header{
+    height:76px;flex:0 0 76px;
+    display:flex;align-items:center;justify-content:space-between;gap:15px;
+    padding:11px 16px;
+    background:var(--panel);
+    border-bottom:1px solid var(--border);
+    backdrop-filter:blur(18px);
+  }
+  .chat-title-wrap{display:flex;align-items:center;gap:12px;min-width:0}
+  .group-icon{
+    width:46px;height:46px;border-radius:15px;
+    display:grid;place-items:center;font-weight:900;color:#fff;
+    background:linear-gradient(135deg,var(--accent),var(--accent-2));
+    flex:0 0 auto;
+  }
+  body.theme-white-black .group-icon,
+  body.theme-green-white .group-icon{color:#fff}
+  .chat-title{font-weight:900;font-size:17px;white-space:nowrap}
+  .chat-subtitle{font-size:12px;color:var(--muted);margin-top:2px;white-space:nowrap}
+  .header-actions{display:flex;align-items:center;gap:8px}
+  .icon-btn{
+    width:42px;height:42px;border-radius:13px;
+    display:grid;place-items:center;
+    color:var(--text);
+    background:var(--panel-2);
+    border:1px solid var(--border);
+  }
+  .current-user{
+    display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:14px;
+    border:1px solid var(--border);background:var(--panel-2);
+    font-size:12px;font-weight:800;
+  }
+  .mini-avatar{
+    width:28px;height:28px;border-radius:10px;display:grid;place-items:center;
+    color:#fff;font-size:11px;font-weight:900;background:linear-gradient(135deg,#2e7fff,#8ac1ff);
+  }
+
+  .chat-body{flex:1;min-height:0;display:flex;flex-direction:column}
+  #messages{
+    flex:1;min-height:0;overflow-y:auto;padding:22px 16px 15px;
+    display:flex;flex-direction:column;gap:10px;
+  }
+  .empty{
+    margin:auto;
+    max-width:360px;
+    text-align:center;
+    color:var(--muted);
+    font-size:13px;
+    line-height:1.6;
+    padding:25px;
+  }
+  .empty strong{display:block;color:var(--text);font-size:17px;margin-bottom:6px}
+  .msg-row{display:flex;justify-content:flex-start}
+  .msg-row.mine{justify-content:flex-end}
+  .msg{
+    max-width:min(80%,680px);
+    padding:10px 12px 9px;
+    border-radius:16px 16px 16px 5px;
+    background:var(--bubble);
+    border:1px solid var(--border);
+    box-shadow:0 5px 16px rgba(0,0,0,.06);
+  }
+  .msg-row.mine .msg{
+    border-radius:16px 16px 5px 16px;
+    background:var(--bubble-own);
+    color:#fff;
+    border-color:transparent;
+  }
+  .msg-name{font-size:11px;font-weight:900;margin-bottom:4px;opacity:.9}
+  .msg-text{font-size:14px;line-height:1.48;word-break:break-word;white-space:pre-wrap}
+  .msg-time{font-size:10px;opacity:.62;margin-top:6px;text-align:right}
+  .composer{
+    padding:10px 12px calc(10px + env(safe-area-inset-bottom));
+    border-top:1px solid var(--border);
+    background:var(--panel);
+    backdrop-filter:blur(18px);
+  }
+  .composer-inner{
+    position:relative;display:flex;align-items:flex-end;gap:8px;max-width:1100px;margin:auto;
+  }
+  .composer-input{
+    flex:1;min-height:46px;max-height:140px;resize:none;outline:none;
+    border-radius:16px;padding:12px 48px 12px 14px;
+    color:var(--text);background:rgba(255,255,255,.06);
+    border:1px solid var(--border);
+  }
+  body.theme-white-black .composer-input,
+  body.theme-green-white .composer-input{background:rgba(0,0,0,.035)}
+  .composer-input:focus{border-color:var(--accent)}
+  .emoji-btn{
+    position:absolute;right:8px;bottom:7px;
+    width:32px;height:32px;border-radius:10px;
+    background:transparent;color:var(--text);font-size:20px;
+  }
+  .send-btn{
+    width:49px;height:46px;border-radius:15px;
+    color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent-2));
+    font-size:18px;flex:0 0 auto;
+  }
+
+  /* ---------- Emoji panel ---------- */
+  #emojiPanel{
+    display:none;position:absolute;right:0;bottom:56px;
+    width:min(335px,calc(100vw - 24px));
+    max-height:280px;overflow:auto;
+    padding:10px;
+    border:1px solid var(--border);border-radius:18px;
+    background:var(--panel);
+    backdrop-filter:blur(18px);
+    box-shadow:var(--shadow);
+    z-index:10;
+  }
+  .emoji-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+  .emoji{
+    height:39px;border-radius:10px;background:transparent;color:var(--text);font-size:21px;
+  }
+  .emoji:hover{background:var(--panel-2)}
+
+  /* ---------- Theme modal ---------- */
+  #themeModal{
+    position:fixed;inset:0;display:none;place-items:center;padding:20px;
+    background:rgba(0,0,0,.56);backdrop-filter:blur(9px);z-index:20;
+  }
+  .theme-box{
+    width:min(620px,100%);
+    border-radius:24px;padding:22px;background:var(--panel);
+    border:1px solid var(--border);box-shadow:var(--shadow);
+    color:var(--text);
+  }
+  .theme-head{display:flex;justify-content:space-between;gap:15px;align-items:flex-start;margin-bottom:15px}
+  .theme-head h3{margin:0;font-size:20px}
+  .theme-head p{margin:5px 0 0;color:var(--muted);font-size:12px}
+  .theme-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .theme-card{
+    overflow:hidden;border-radius:18px;border:1px solid var(--border);
+    background:var(--panel-2);padding:8px;text-align:left;color:var(--text);
+  }
+  .wallpaper{
+    height:125px;border-radius:13px;
+    position:relative;overflow:hidden;
+    margin-bottom:9px;
+  }
+  .wallpaper.orange-blue{
+    background:
+      radial-gradient(circle at 18% 25%, rgba(255,122,24,.95), transparent 30%),
+      radial-gradient(circle at 76% 72%, rgba(62,143,255,.95), transparent 31%),
+      linear-gradient(145deg,#241522,#111a2a);
+  }
+  .wallpaper.white-black{
+    background:
+      linear-gradient(130deg,rgba(0,0,0,.10) 0 35%,transparent 35% 100%),
+      radial-gradient(circle at 82% 20%,rgba(0,0,0,.12),transparent 24%),
+      linear-gradient(145deg,#fbfbfb,#cfd2d7);
+  }
+  .wallpaper.green-white{
+    background:
+      radial-gradient(circle at 25% 25%,rgba(28,165,81,.62),transparent 32%),
+      radial-gradient(circle at 78% 75%,rgba(120,211,149,.45),transparent 32%),
+      linear-gradient(145deg,#f7fff9,#cfe6d7);
+  }
+  .wallpaper::after{
+    content:"";position:absolute;inset:-40px;
+    background:repeating-linear-gradient(135deg,rgba(255,255,255,.10) 0 10px,transparent 10px 30px);
+    transform:rotate(8deg);
+  }
+  .theme-card strong{font-size:13px}
+  .selected-dot{
+    float:right;width:10px;height:10px;border-radius:50%;
+    background:var(--accent);margin-top:4px;display:none;
+  }
+  .theme-card.selected .selected-dot{display:block}
+
+  /* ---------- Responsive ---------- */
+  @media (max-width:800px){
+    body{overflow:auto}
+    #loginScreen{position:absolute;min-height:100%;place-items:start center}
+    .login-shell{grid-template-columns:1fr;max-width:600px}
+    .intro-card{padding:26px}
+    .intro-card h1{font-size:34px}
+    .profiles-card{padding:18px}
+    #chatScreen{position:absolute;min-height:100%;height:100%}
+    .current-user .user-label{display:none}
+  }
+  @media (max-width:520px){
+    .profile-grid{grid-template-columns:1fr 1fr}
+    .profile-btn{min-height:108px;padding:14px}
+    .chat-header{height:68px;flex-basis:68px;padding:8px 10px}
+    .chat-title{font-size:15px}
+    .chat-subtitle{font-size:10px}
+    .group-icon{width:42px;height:42px}
+    .current-user{padding:5px}
+    .icon-btn{width:39px;height:39px}
+    #messages{padding:14px 10px}
+    .msg{max-width:88%}
+    .theme-grid{grid-template-columns:1fr}
+    .wallpaper{height:90px}
+  }
+</style>
+</head>
+<body class="theme-orange-blue">
+
+<!-- ================= LOGIN ================= -->
+<section id="loginScreen">
+  <div class="login-shell">
+    <div class="intro-card">
+      <div class="brand-row">
+        <div class="brand-logo">4F</div>
+        <div>
+          <div class="brand-title">4 Friends Private Chat</div>
+          <div class="brand-sub">One private group • Four individual profiles</div>
+        </div>
+      </div>
+      <h1>Apni profile kholo,<br>phir group mein chat karo.</h1>
+      <p>
+        Har friend ka apna profile aur password hai. Login ke baad sab ek hi group chat
+        mein messages dekh aur send kar sakte hain.
+      </p>
+      <div class="tiny-note">
+        Messages browser ke <b>localStorage</b> mein permanently save kiye ja rahe hain.
+        Same browser ke multiple tabs mein live sync bhi hai.
+      </div>
+    </div>
+
+    <div class="profiles-card">
+      <h2>Choose your profile</h2>
+      <p class="hint">Apna naam select karo aur password enter karo.</p>
+      <div class="profile-grid" id="profileGrid"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PASSWORD MODAL ================= -->
+<div id="passwordModal">
+  <div class="password-box">
+    <div class="password-top">
+      <div>
+        <h3 id="passwordTitle">Profile Login</h3>
+        <div class="password-desc">Is profile ko open karne ke liye password enter karo.</div>
+      </div>
+      <button class="close-btn" id="closePassword" aria-label="Close">×</button>
+    </div>
+    <input id="passwordInput" type="password" placeholder="Enter password" autocomplete="off" />
+    <button class="login-submit" id="loginSubmit">Open Profile</button>
+    <div class="error" id="passwordError"></div>
+  </div>
+</div>
+
+<!-- ================= CHAT ================= -->
+<section id="chatScreen">
+  <div class="chat-app">
+    <header class="chat-header">
+      <div class="chat-title-wrap">
+        <div class="group-icon">4F</div>
+        <div>
+          <div class="chat-title">4 Friends Group</div>
+          <div class="chat-subtitle" id="onlineText">4 profiles • one shared chat</div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="current-user">
+          <div class="mini-avatar" id="currentAvatar">Z</div>
+          <span class="user-label" id="currentUserName">Zain</span>
+        </div>
+        <button class="icon-btn" id="themeBtn" title="Change theme">◐</button>
+        <button class="icon-btn" id="logoutBtn" title="Logout">↪</button>
+      </div>
+    </header>
+
+    <main class="chat-body">
+      <div id="messages"></div>
+
+      <div class="composer">
+        <div class="composer-inner">
+          <textarea id="messageInput" class="composer-input" rows="1" placeholder="Type a message..."></textarea>
+          <button class="emoji-btn" id="emojiBtn" title="Emoji">☺</button>
+          <button class="send-btn" id="sendBtn" title="Send">➤</button>
+
+          <div id="emojiPanel">
+            <div class="emoji-grid" id="emojiGrid"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<!-- ================= THEME MODAL ================= -->
+<div id="themeModal">
+  <div class="theme-box">
+    <div class="theme-head">
+      <div>
+        <h3>Choose your theme</h3>
+        <p>Theme har profile ke liye alag save hoti hai.</p>
+      </div>
+      <button class="close-btn" id="closeTheme">×</button>
+    </div>
+    <div class="theme-grid">
+      <button class="theme-card" data-theme="theme-orange-blue">
+        <div class="wallpaper orange-blue"></div>
+        <strong>Orange + Blue</strong><span class="selected-dot"></span>
+      </button>
+      <button class="theme-card" data-theme="theme-white-black">
+        <div class="wallpaper white-black"></div>
+        <strong>White + Black</strong><span class="selected-dot"></span>
+      </button>
+      <button class="theme-card" data-theme="theme-green-white">
+        <div class="wallpaper green-white"></div>
+        <strong>Green + White</strong><span class="selected-dot"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  /* =========================================================
+     FRIEND PROFILES
+     NOTE: Client-side passwords are visible in source code.
+     This is suitable for a private demo / local friend chat,
+     not for a security-sensitive production app.
+  ========================================================= */
+  const USERS = [
+    { id:"zain",        name:"Zain",        password:"zain78978",  initials:"Z", colorClass:"" },
+    { id:"abdulrehman", name:"Abdulrehman", password:"112233",      initials:"A", colorClass:"" },
+    { id:"shayan",      name:"Shayan",      password:"11223344",   initials:"S", colorClass:"" },
+    { id:"mujahid",     name:"Mujahid",     password:"1122334455", initials:"M", colorClass:"" }
+  ];
+
+  const STORAGE_MESSAGES = "fourFriendsChat_messages_v1";
+  const STORAGE_THEME_PREFIX = "fourFriendsChat_theme_";
+  const STORAGE_SESSION = "fourFriendsChat_session_v1";
+  const CHANNEL_NAME = "fourFriendsChat_realtime_v1";
+
+  let currentUser = null;
+  let selectedUser = null;
+  let messages = [];
+  let channel = null;
+
+  const $ = (id) => document.getElementById(id);
+
+  const loginScreen = $("loginScreen");
+  const chatScreen = $("chatScreen");
+  const passwordModal = $("passwordModal");
+  const passwordInput = $("passwordInput");
+  const passwordError = $("passwordError");
+  const profileGrid = $("profileGrid");
+  const messagesBox = $("messages");
+  const messageInput = $("messageInput");
+  const emojiPanel = $("emojiPanel");
+  const themeModal = $("themeModal");
+
+  /* ---------- Helpers ---------- */
+  function getUserById(id){
+    return USERS.find(u => u.id === id) || null;
+  }
+
+  function escapeHTML(value){
+    return String(value)
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
+
+  function formatTime(ts){
+    const d = new Date(ts);
+    return d.toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" });
+  }
+
+  function loadMessages(){
+    try{
+      const parsed = JSON.parse(localStorage.getItem(STORAGE_MESSAGES) || "[]");
+      messages = Array.isArray(parsed) ? parsed : [];
+    }catch{
+      messages = [];
+    }
+  }
+
+  function saveMessages(){
+    localStorage.setItem(STORAGE_MESSAGES, JSON.stringify(messages));
+  }
+
+  function postRealtime(payload){
+    try{
+      if(channel) channel.postMessage(payload);
+    }catch{}
+  }
+
+  function applyTheme(theme){
+    document.body.classList.remove("theme-orange-blue","theme-white-black","theme-green-white");
+    document.body.classList.add(theme);
+    if(currentUser){
+      localStorage.setItem(STORAGE_THEME_PREFIX + currentUser.id, theme);
+    }
+    document.querySelectorAll(".theme-card").forEach(card => {
+      card.classList.toggle("selected", card.dataset.theme === theme);
+    });
+  }
+
+  function loadUserTheme(){
+    const saved = localStorage.getItem(STORAGE_THEME_PREFIX + currentUser.id);
+    applyTheme(saved || "theme-orange-blue");
+  }
+
+  /* ---------- Login UI ---------- */
+  function renderProfiles(){
+    profileGrid.innerHTML = USERS.map(user => `
+      <button class="profile-btn" data-user="${user.id}">
+        <div class="avatar">${user.initials}</div>
+        <div class="profile-name">${escapeHTML(user.name)}</div>
+        <div class="profile-role">Private profile</div>
+      </button>
+    `).join("");
+
+    profileGrid.querySelectorAll(".profile-btn").forEach(btn => {
+      btn.addEventListener("click", () => openPassword(btn.dataset.user));
+    });
+  }
+
+  function openPassword(userId){
+    selectedUser = getUserById(userId);
+    $("passwordTitle").textContent = selectedUser.name + " Login";
+    passwordInput.value = "";
+    passwordError.textContent = "";
+    passwordModal.style.display = "grid";
+    setTimeout(() => passwordInput.focus(), 50);
+  }
+
+  function closePassword(){
+    passwordModal.style.display = "none";
+    selectedUser = null;
+    passwordError.textContent = "";
+  }
+
+  function login(){
+    if(!selectedUser) return;
+    if(passwordInput.value === selectedUser.password){
+      currentUser = selectedUser;
+      sessionStorage.setItem(STORAGE_SESSION, currentUser.id);
+      closePassword();
+      loginScreen.style.display = "none";
+      chatScreen.style.display = "block";
+      updateCurrentUserUI();
+      loadUserTheme();
+      loadMessages();
+      renderMessages(true);
+      connectRealtime();
+      messageInput.focus();
+    }else{
+      passwordError.textContent = "Wrong password. Dobara try karo.";
+      passwordInput.select();
+    }
+  }
+
+  function logout(){
+    currentUser = null;
+    sessionStorage.removeItem(STORAGE_SESSION);
+    if(channel){
+      try{ channel.close(); }catch{}
+      channel = null;
+    }
+    chatScreen.style.display = "none";
+    loginScreen.style.display = "grid";
+    closeThemeModal();
+  }
+
+  function updateCurrentUserUI(){
+    $("currentUserName").textContent = currentUser.name;
+    $("currentAvatar").textContent = currentUser.initials;
+  }
+
+  /* ---------- Chat rendering ---------- */
+  function renderMessages(scrollBottom=false){
+    if(!messages.length){
+      messagesBox.innerHTML = `
+        <div class="empty">
+          <strong>Abhi koi message nahi hai.</strong>
+          Pehla message bhejo aur group chat start karo.
+        </div>`;
+      return;
+    }
+
+    const html = messages.map(msg => {
+      const mine = currentUser && msg.senderId === currentUser.id;
+      const name = getUserById(msg.senderId)?.name || "Unknown";
+      return `
+        <div class="msg-row ${mine ? "mine" : ""}">
+          <div class="msg">
+            <div class="msg-name">${escapeHTML(name)}</div>
+            <div class="msg-text">${escapeHTML(msg.text)}</div>
+            <div class="msg-time">${formatTime(msg.time)}</div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    messagesBox.innerHTML = html;
+    if(scrollBottom){
+      requestAnimationFrame(() => {
+        messagesBox.scrollTop = messagesBox.scrollHeight;
+      });
+    }
+  }
+
+  function addMessage(){
+    const text = messageInput.value.trim();
+    if(!text || !currentUser) return;
+
+    const msg = {
+      id: crypto.randomUUID ? crypto.randomUUID() : Date.now() + "_" + Math.random(),
+      senderId: currentUser.id,
+      text,
+      time: Date.now()
+    };
+
+    messages.push(msg);
+    saveMessages();
+    renderMessages(true);
+    postRealtime({type:"message", message:msg});
+    messageInput.value = "";
+    autoResize();
+  }
+
+  /* ---------- Realtime ---------- */
+  function connectRealtime(){
+    if(typeof BroadcastChannel === "undefined") return;
+
+    if(channel){
+      try{ channel.close(); }catch{}
+    }
+
+    channel = new BroadcastChannel(CHANNEL_NAME);
+
+    channel.onmessage = (event) => {
+      const data = event.data || {};
+
+      if(data.type === "message" && data.message){
+        const exists = messages.some(m => m.id === data.message.id);
+        if(!exists){
+          messages.push(data.message);
+          saveMessages();
+          renderMessages(true);
+        }
+      }
+
+      if(data.type === "theme" && data.userId === currentUser?.id){
+        applyTheme(data.theme);
+      }
+    };
+  }
+
+  window.addEventListener("storage", (e) => {
+    if(e.key === STORAGE_MESSAGES){
+      loadMessages();
+      renderMessages();
+    }
+  });
+
+  /* ---------- Composer ---------- */
+  function autoResize(){
+    messageInput.style.height = "auto";
+    messageInput.style.height = Math.min(messageInput.scrollHeight, 140) + "px";
+  }
+
+  messageInput.addEventListener("input", autoResize);
+
+  messageInput.addEventListener("keydown", (e) => {
+    if(e.key === "Enter" && !e.shiftKey){
+      e.preventDefault();
+      addMessage();
+    }
+  });
+
+  $("sendBtn").addEventListener("click", addMessage);
+
+  /* ---------- Emoji ---------- */
+  const EMOJIS = [
+    "😀","😃","😄","😁","😆","😅","😂","🤣","😊","🙂","🙃","😉","😌","😍","🥰","😘","😎","🤩","🥳",
+    "😇","🤗","🤔","😐","😑","😶","🙄","😏","😴","🤤","😋","😛","😜","🤪","😝","🫡","🤐","🤨","😱",
+    "😢","😭","😤","😡","🤬","🤯","😳","🥺","😨","😰","😥","😓","🤝","👍","👎","👏","🙌","🙏","💯",
+    "❤️","🧡","💛","💚","💙","💜","🖤","🤍","🤎","✨","🔥","⭐","🎉","🎊","✅","❌","💀","😂","🤣",
+    "⚡","🚀","🎯","💻","📱","🎮","☕","🍕","🍔","🌙","☀️","🌧️","🐶","🐱","🦈","😈","👀","💪","🙈"
+  ];
+
+  $("emojiGrid").innerHTML = EMOJIS.map(e => `<button class="emoji" type="button">${e}</button>`).join("");
+
+  $("emojiGrid").querySelectorAll(".emoji").forEach(btn => {
+    btn.addEventListener("click", () => {
+      insertAtCursor(messageInput, btn.textContent);
+      messageInput.focus();
+      autoResize();
+    });
+  });
+
+  function insertAtCursor(field, text){
+    const start = field.selectionStart ?? field.value.length;
+    const end = field.selectionEnd ?? field.value.length;
+    field.value = field.value.slice(0,start) + text + field.value.slice(end);
+    const cursor = start + text.length;
+    field.setSelectionRange(cursor,cursor);
+  }
+
+  $("emojiBtn").addEventListener("click", (e) => {
+    e.stopPropagation();
+    emojiPanel.style.display = emojiPanel.style.display === "block" ? "none" : "block";
+  });
+
+  document.addEventListener("click", (e) => {
+    if(!emojiPanel.contains(e.target) && e.target !== $("emojiBtn")){
+      emojiPanel.style.display = "none";
+    }
+  });
+
+  /* ---------- Themes ---------- */
+  $("themeBtn").addEventListener("click", () => {
+    themeModal.style.display = "grid";
+    const currentTheme = [...document.body.classList].find(c => c.startsWith("theme-"));
+    document.querySelectorAll(".theme-card").forEach(c => c.classList.toggle("selected", c.dataset.theme === currentTheme));
+  });
+
+  $("closeTheme").addEventListener("click", closeThemeModal);
+
+  themeModal.addEventListener("click", (e) => {
+    if(e.target === themeModal) closeThemeModal();
+  });
+
+  document.querySelectorAll(".theme-card").forEach(card => {
+    card.addEventListener("click", () => {
+      const theme = card.dataset.theme;
+      applyTheme(theme);
+      postRealtime({type:"theme", userId:currentUser.id, theme});
+      closeThemeModal();
+    });
+  });
+
+  function closeThemeModal(){
+    themeModal.style.display = "none";
+  }
+
+  /* ---------- Buttons / Modal ---------- */
+  $("loginSubmit").addEventListener("click", login);
+  $("closePassword").addEventListener("click", closePassword);
+  passwordModal.addEventListener("click", e => {
+    if(e.target === passwordModal) closePassword();
+  });
+  passwordInput.addEventListener("keydown", e => {
+    if(e.key === "Enter") login();
+  });
+  $("logoutBtn").addEventListener("click", logout);
+
+  /* ---------- Restore session for same tab ---------- */
+  function restoreSession(){
+    const id = sessionStorage.getItem(STORAGE_SESSION);
+    if(!id) return;
+
+    const user = getUserById(id);
+    if(!user) return;
+
+    currentUser = user;
+    loginScreen.style.display = "none";
+    chatScreen.style.display = "block";
+    updateCurrentUserUI();
+    loadUserTheme();
+    loadMessages();
+    renderMessages(true);
+    connectRealtime();
+  }
+
+  renderProfiles();
+  restoreSession();
+})();
+</script>
+</body>
+</html>
